@@ -1,38 +1,52 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { 
+  settlements, expenses, 
+  type Settlement, type InsertSettlement, 
+  type Expense, type InsertExpense 
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Settlements
+  createSettlement(settlement: InsertSettlement, expensesList: InsertExpense[]): Promise<Settlement>;
+  getSettlements(): Promise<Settlement[]>;
+  getSettlement(id: number): Promise<(Settlement & { expenses: Expense[] }) | undefined>;
+  deleteSettlement(id: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async createSettlement(insertSettlement: InsertSettlement, expensesList: InsertExpense[]): Promise<Settlement> {
+    // Transaction to ensure atomicity
+    return await db.transaction(async (tx) => {
+      const [settlement] = await tx.insert(settlements).values(insertSettlement).returning();
+      
+      if (expensesList.length > 0) {
+        await tx.insert(expenses).values(
+          expensesList.map(e => ({ ...e, settlementId: settlement.id }))
+        );
+      }
+      
+      return settlement;
+    });
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getSettlements(): Promise<Settlement[]> {
+    return await db.select().from(settlements).orderBy(desc(settlements.weekEndDate));
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getSettlement(id: number): Promise<(Settlement & { expenses: Expense[] }) | undefined> {
+    const [settlement] = await db.select().from(settlements).where(eq(settlements.id, id));
+    
+    if (!settlement) return undefined;
+    
+    const expensesList = await db.select().from(expenses).where(eq(expenses.settlementId, id));
+    
+    return { ...settlement, expenses: expensesList };
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async deleteSettlement(id: number): Promise<void> {
+    await db.delete(settlements).where(eq(settlements.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
