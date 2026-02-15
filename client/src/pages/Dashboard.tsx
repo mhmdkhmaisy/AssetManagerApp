@@ -1,4 +1,4 @@
-import { useSettlements, useExportSettlementPdf, useDeleteSettlement } from "@/hooks/use-settlements";
+import { useSettlements, useExportSettlementPdf, useDeleteSettlement, useSettlement } from "@/hooks/use-settlements";
 import { Button } from "@/components/ui/button";
 import { CreateSettlementForm } from "@/components/CreateSettlementForm";
 import { SettlementStats } from "@/components/SettlementStats";
@@ -26,7 +26,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { Plus, Download, MoreHorizontal, Trash, FileText, Loader2, AlertCircle, Eye } from "lucide-react";
+import { Plus, Download, MoreHorizontal, Trash, FileText, Loader2, AlertCircle, Eye, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +37,10 @@ export default function Dashboard() {
   const exportSettlementPdf = useExportSettlementPdf();
   const deleteSettlement = useDeleteSettlement();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [viewSettlement, setViewSettlement] = useState<any>(null);
+  const [editingSettlement, setEditingSettlement] = useState<any>(null);
+  const [viewSettlementId, setViewSettlementId] = useState<number | null>(null);
+  
+  const { data: detailedSettlement, isLoading: isLoadingDetails } = useSettlement(viewSettlementId || 0);
 
   if (isLoading) {
     return (
@@ -156,10 +159,16 @@ export default function Dashboard() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem 
-                                onClick={() => setViewSettlement(settlement)}
+                                onClick={() => setViewSettlementId(settlement.id)}
                             >
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => setEditingSettlement(settlement)}
+                            >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                                 onClick={() => exportSettlementPdf.mutate(settlement.id)}
@@ -190,32 +199,56 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-        <Dialog open={!!viewSettlement} onOpenChange={() => setViewSettlement(null)}>
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editingSettlement} onOpenChange={() => setEditingSettlement(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Settlement</DialogTitle>
+              <DialogDescription>
+                Modify the details for this settlement period.
+              </DialogDescription>
+            </DialogHeader>
+            {editingSettlement && (
+              <CreateSettlementForm 
+                onSuccess={() => setEditingSettlement(null)} 
+                initialData={editingSettlement}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* View Dialog */}
+        <Dialog open={!!viewSettlementId} onOpenChange={() => setViewSettlementId(null)}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Settlement Details</DialogTitle>
               <DialogDescription>
-                Financial breakdown for the week ending {viewSettlement && format(new Date(viewSettlement.weekEndDate), "MMM d, yyyy")}.
+                Financial breakdown and expenses.
               </DialogDescription>
             </DialogHeader>
-            {viewSettlement && (
+            {isLoadingDetails ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : detailedSettlement && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs text-muted-foreground">Gross Income</p>
-                    <p className="text-lg font-bold">${Number(viewSettlement.grossIncome).toFixed(2)}</p>
+                    <p className="text-lg font-bold">${Number(detailedSettlement.grossIncome).toFixed(2)}</p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs text-muted-foreground">PayPal Fees</p>
-                    <p className="text-lg font-bold">${Number(viewSettlement.paypalFees).toFixed(2)}</p>
+                    <p className="text-lg font-bold">${Number(detailedSettlement.paypalFees).toFixed(2)}</p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs text-muted-foreground">Total Expenses</p>
-                    <p className="text-lg font-bold">${Number(viewSettlement.totalExpenses).toFixed(2)}</p>
+                    <p className="text-lg font-bold">${Number(detailedSettlement.totalExpenses).toFixed(2)}</p>
                   </div>
                   <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
                     <p className="text-xs text-green-700 dark:text-green-300">Net Income</p>
-                    <p className="text-lg font-bold text-green-700 dark:text-green-300">${Number(viewSettlement.netIncome).toFixed(2)}</p>
+                    <p className="text-lg font-bold text-green-700 dark:text-green-300">${Number(detailedSettlement.netIncome).toFixed(2)}</p>
                   </div>
                 </div>
 
@@ -226,23 +259,49 @@ export default function Dashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-4 border rounded-lg">
                       <p className="text-sm font-medium">Party A</p>
-                      <p className="text-2xl font-bold">${Number(viewSettlement.partyAShare).toFixed(2)}</p>
+                      <p className="text-2xl font-bold">${Number(detailedSettlement.partyAShare).toFixed(2)}</p>
                     </div>
                     <div className="p-4 border rounded-lg">
                       <p className="text-sm font-medium">Party B</p>
-                      <p className="text-2xl font-bold">${Number(viewSettlement.partyBShare).toFixed(2)}</p>
+                      <p className="text-2xl font-bold">${Number(detailedSettlement.partyBShare).toFixed(2)}</p>
                     </div>
                     <div className="p-4 border rounded-lg">
                       <p className="text-sm font-medium">Party C</p>
-                      <p className="text-2xl font-bold">${Number(viewSettlement.partyCShare).toFixed(2)}</p>
+                      <p className="text-2xl font-bold">${Number(detailedSettlement.partyCShare).toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
 
-                {viewSettlement.notes && (
+                {detailedSettlement.expenses && detailedSettlement.expenses.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Expenses Detail</h3>
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Payee</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {detailedSettlement.expenses.map((expense: any) => (
+                            <TableRow key={expense.id}>
+                              <TableCell>{expense.description}</TableCell>
+                              <TableCell>{expense.payeeEmail || "-"}</TableCell>
+                              <TableCell className="text-right">${Number(expense.amount).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+
+                {detailedSettlement.notes && (
                   <div>
                     <h3 className="text-sm font-semibold mb-1">Notes</h3>
-                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">{viewSettlement.notes}</p>
+                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">{detailedSettlement.notes}</p>
                   </div>
                 )}
               </div>

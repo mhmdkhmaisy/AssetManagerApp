@@ -1,18 +1,18 @@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSettlementSchema, insertExpenseSchema, type CreateSettlementRequest } from "@shared/schema";
-import { useCreateSettlement } from "@/hooks/use-settlements";
+import { useCreateSettlement, useUpdateSettlement, useSettlement } from "@/hooks/use-settlements";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Plus, Trash2, CalendarIcon, Loader2, DollarSign } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
+import { useEffect } from "react";
 
 // We need to extend the schema for the form to handle date objects before string conversion
 // and include the expenses array structure
@@ -26,20 +26,53 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface CreateSettlementFormProps {
   onSuccess?: () => void;
+  initialData?: any;
 }
 
-export function CreateSettlementForm({ onSuccess }: CreateSettlementFormProps) {
+export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlementFormProps) {
   const createSettlement = useCreateSettlement();
+  const updateSettlement = useUpdateSettlement();
+
+  const { data: fullSettlementData, isLoading: isLoadingFullData } = useSettlement(
+    initialData?.id && !initialData.expenses ? initialData.id : 0
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: initialData ? {
+      ...initialData,
+      weekStartDate: new Date(initialData.weekStartDate),
+      weekEndDate: new Date(initialData.weekEndDate),
+      expenses: initialData.expenses?.map((e: any) => ({
+        ...e,
+        notes: e.notes || undefined,
+        payeeEmail: e.payeeEmail || undefined,
+      })) || [],
+      feePercentage: initialData.feePercentage || undefined,
+      notes: initialData.notes || undefined,
+    } as any : {
       grossIncome: "",
       paypalFees: "0",
       expenses: [],
-      // Dates default to undefined in form, required by schema
     },
   });
+
+  useEffect(() => {
+    if (fullSettlementData) {
+      form.reset({
+        ...fullSettlementData,
+        weekStartDate: new Date(fullSettlementData.weekStartDate),
+        weekEndDate: new Date(fullSettlementData.weekEndDate),
+        expenses: fullSettlementData.expenses.map(e => ({
+          ...e,
+          notes: e.notes || undefined,
+          payeeEmail: e.payeeEmail || undefined,
+        })) || [],
+        feePercentage: fullSettlementData.feePercentage || undefined,
+        notes: fullSettlementData.notes || undefined,
+      } as any);
+    }
+  }, [fullSettlementData, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -54,13 +87,29 @@ export function CreateSettlementForm({ onSuccess }: CreateSettlementFormProps) {
       weekEndDate: format(data.weekEndDate, "yyyy-MM-dd"),
     };
 
-    createSettlement.mutate(apiData, {
-      onSuccess: () => {
-        form.reset();
-        onSuccess?.();
-      },
-    });
+    if (initialData?.id) {
+      updateSettlement.mutate({ id: initialData.id, data: apiData }, {
+        onSuccess: () => {
+          onSuccess?.();
+        },
+      });
+    } else {
+      createSettlement.mutate(apiData, {
+        onSuccess: () => {
+          form.reset();
+          onSuccess?.();
+        },
+      });
+    }
   };
+
+  if (isLoadingFullData) {
+    return (
+      <div className="flex justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
@@ -69,7 +118,7 @@ export function CreateSettlementForm({ onSuccess }: CreateSettlementFormProps) {
         {/* Income Section */}
         <Card className="border-border/50 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-xl text-primary">Income Details</CardTitle>
+            <CardTitle className="text-xl text-primary">{initialData ? "Edit Settlement" : "Income Details"}</CardTitle>
             <CardDescription>Enter the gross revenue and period for this settlement.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 md:grid-cols-2">
@@ -316,15 +365,15 @@ export function CreateSettlementForm({ onSuccess }: CreateSettlementFormProps) {
             type="submit" 
             size="lg" 
             className="w-full md:w-auto font-semibold shadow-lg shadow-primary/20"
-            disabled={createSettlement.isPending}
+            disabled={createSettlement.isPending || updateSettlement.isPending}
           >
-            {createSettlement.isPending ? (
+            {createSettlement.isPending || updateSettlement.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Calculating Splits...
               </>
             ) : (
-              "Save & Calculate Settlement"
+              initialData ? "Update Settlement" : "Save & Calculate Settlement"
             )}
           </Button>
         </div>
