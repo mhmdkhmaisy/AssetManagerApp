@@ -90,6 +90,7 @@ export async function registerRoutes(
         description: e.description,
         amount: e.amount,
         payeeEmail: e.payeeEmail,
+        notes: e.notes,
       }));
 
       // 6. Save to DB

@@ -25,6 +25,7 @@ export const expenses = pgTable("expenses", {
   description: text("description").notNull(),
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
   payeeEmail: text("payee_email"),
+  notes: text("notes"), // added for transactionID or other info
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -41,29 +42,28 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
 }));
 
 // === BASE SCHEMAS ===
-// Helper to coerce numeric strings to numbers for Zod validation if needed, 
-// though typically with forms we might handle strings until the backend.
-// Drizzle-zod creates schemas that expect strings for numeric columns usually.
 
 export const insertSettlementSchema = createInsertSchema(settlements)
   .omit({ 
     id: true, 
     createdAt: true,
-    totalExpenses: true, // Calculated on backend
-    netIncome: true,     // Calculated on backend
-    partyAShare: true,   // Calculated on backend
-    partyBShare: true,   // Calculated on backend
-    partyCShare: true    // Calculated on backend
+    totalExpenses: true,
+    netIncome: true,
+    partyAShare: true,
+    partyBShare: true,
+    partyCShare: true    
   })
   .extend({
     grossIncome: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid amount"),
     paypalFees: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid amount").default("0"),
+    feePercentage: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid percentage").optional(), // Added for frontend auto-calc
   });
 
 export const insertExpenseSchema = createInsertSchema(expenses)
-  .omit({ id: true, createdAt: true, settlementId: true }) // settlementId added by backend or handled in nested
+  .omit({ id: true, createdAt: true, settlementId: true })
   .extend({
     amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid amount"),
+    notes: z.string().optional(),
   });
 
 // === EXPLICIT API CONTRACT TYPES ===
