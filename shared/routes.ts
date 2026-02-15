@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertSettlementSchema, insertExpenseSchema, settlements, expenses } from './schema';
+import { insertSettlementSchema, insertExpenseSchema, insertDirectPaymentSchema, settlements, expenses } from './schema';
 
 // ============================================
 // SHARED ERROR SCHEMAS
@@ -42,6 +42,7 @@ export const api = {
       path: '/api/settlements' as const,
       input: insertSettlementSchema.extend({
         expenses: z.array(insertExpenseSchema),
+        directPayments: z.array(insertDirectPaymentSchema),
       }),
       responses: {
         201: z.custom<typeof settlements.$inferSelect>(),
@@ -53,6 +54,7 @@ export const api = {
       path: '/api/settlements/:id' as const,
       input: insertSettlementSchema.extend({
         expenses: z.array(insertExpenseSchema),
+        directPayments: z.array(insertDirectPaymentSchema),
       }),
       responses: {
         200: z.custom<typeof settlements.$inferSelect>(),

@@ -1,15 +1,16 @@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSettlementSchema, insertExpenseSchema, type CreateSettlementRequest } from "@shared/schema";
+import { insertSettlementSchema, insertExpenseSchema, insertDirectPaymentSchema, type CreateSettlementRequest } from "@shared/schema";
 import { useCreateSettlement, useUpdateSettlement, useSettlement } from "@/hooks/use-settlements";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, Trash2, CalendarIcon, Loader2, DollarSign } from "lucide-react";
+import { Plus, Trash2, CalendarIcon, Loader2, DollarSign, Wallet } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
@@ -19,6 +20,7 @@ import { useEffect } from "react";
 // and include the expenses array structure
 const formSchema = insertSettlementSchema.extend({
   expenses: z.array(insertExpenseSchema),
+  directPayments: z.array(insertDirectPaymentSchema),
   weekStartDate: z.date(),
   weekEndDate: z.date(),
 });
@@ -49,12 +51,18 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
         notes: e.notes || undefined,
         payeeEmail: e.payeeEmail || undefined,
       })) || [],
+      directPayments: initialData.directPayments?.map((dp: any) => ({
+        ...dp,
+        notes: dp.notes || undefined,
+        reference: dp.reference || undefined,
+      })) || [],
       feePercentage: initialData.feePercentage || undefined,
       notes: initialData.notes || undefined,
     } as any : {
       grossIncome: "",
       paypalFees: "0",
       expenses: [],
+      directPayments: [],
     },
   });
 
@@ -69,15 +77,25 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
           notes: e.notes || undefined,
           payeeEmail: e.payeeEmail || undefined,
         })) || [],
+        directPayments: fullSettlementData.directPayments?.map(dp => ({
+          ...dp,
+          notes: dp.notes || undefined,
+          reference: dp.reference || undefined,
+        })) || [],
         feePercentage: fullSettlementData.feePercentage || undefined,
         notes: fullSettlementData.notes || undefined,
       } as any);
     }
   }, [fullSettlementData, form]);
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: expenseFields, append: appendExpense, remove: removeExpense } = useFieldArray({
     control: form.control,
     name: "expenses",
+  });
+
+  const { fields: directPaymentFields, append: appendDirectPayment, remove: removeDirectPayment } = useFieldArray({
+    control: form.control,
+    name: "directPayments",
   });
 
   const onSubmit = (data: FormValues) => {
@@ -285,7 +303,7 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append({ description: "", amount: "", payeeEmail: "", notes: "" })}
+              onClick={() => appendExpense({ description: "", amount: "", payeeEmail: "", notes: "" })}
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Expense
@@ -293,7 +311,7 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {fields.map((field, index) => (
+              {expenseFields.map((field, index) => (
                 <div key={field.id} className="flex flex-col gap-4 p-4 border rounded-lg bg-muted/20 animate-in fade-in zoom-in-95 duration-200">
                   <div className="flex items-start justify-between">
                     <h4 className="text-sm font-medium text-muted-foreground">Expense #{index + 1}</h4>
@@ -302,7 +320,7 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 -mt-1 -mr-2"
-                      onClick={() => remove(index)}
+                      onClick={() => removeExpense(index)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -376,9 +394,151 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
                 </div>
               ))}
               
-              {fields.length === 0 && (
+              {expenseFields.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
                   No expenses added yet.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Direct Player Payments Section */}
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-xl text-primary">Direct Player Payments</CardTitle>
+              <CardDescription>Payments received directly by partners (offset against share).</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => appendDirectPayment({ amount: "", paymentMethod: "paypal", receivedBy: "party_a", reference: "", notes: "" })}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Direct Payment
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {directPaymentFields.map((field, index) => (
+                <div key={field.id} className="flex flex-col gap-4 p-4 border rounded-lg bg-muted/20 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex items-start justify-between">
+                    <h4 className="text-sm font-medium text-muted-foreground">Direct Payment #{index + 1}</h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 -mt-1 -mr-2"
+                      onClick={() => removeDirectPayment(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name={`directPayments.${index}.amount`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Amount</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                <Input placeholder="0.00" className="pl-8" {...field} />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name={`directPayments.${index}.paymentMethod`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Method</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select method" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="paypal">PayPal</SelectItem>
+                              <SelectItem value="crypto">Crypto</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`directPayments.${index}.receivedBy`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Received By</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select recipient" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="party_a">Party A</SelectItem>
+                              <SelectItem value="party_b">Party B</SelectItem>
+                              <SelectItem value="party_c">Party C</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`directPayments.${index}.reference`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Reference (TX Hash / PayPal ID)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Reference ID" {...field} value={field.value || ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`directPayments.${index}.notes`}
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel className="text-xs">Notes</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Additional notes..." 
+                              className="min-h-[60px] resize-none"
+                              {...field} 
+                              value={field.value || ''} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              ))}
+              
+              {directPaymentFields.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                  No direct payments added yet.
                 </div>
               )}
             </div>

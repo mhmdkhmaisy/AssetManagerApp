@@ -233,10 +233,14 @@ export default function Dashboard() {
               </div>
             ) : detailedSettlement && (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-xs text-muted-foreground">Gross Income</p>
+                    <p className="text-xs text-muted-foreground">Gross Income (Incl. Direct)</p>
                     <p className="text-lg font-bold">${Number(detailedSettlement.grossIncome).toFixed(2)}</p>
+                  </div>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground">Direct Payments</p>
+                    <p className="text-lg font-bold text-blue-600">${Number(detailedSettlement.directPaymentsTotal).toFixed(2)}</p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs text-muted-foreground">PayPal Fees</p>
@@ -255,22 +259,74 @@ export default function Dashboard() {
                 <Separator />
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Profit Distribution</h3>
+                  <h3 className="text-lg font-semibold mb-3">Profit Distribution & Payouts</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 border rounded-lg">
+                    <div className="p-4 border rounded-lg space-y-2">
                       <p className="text-sm font-medium">Party A</p>
-                      <p className="text-2xl font-bold">${Number(detailedSettlement.partyAShare).toFixed(2)}</p>
+                      <div className="flex justify-between items-end">
+                        <span className="text-xs text-muted-foreground">Share:</span>
+                        <span className="text-sm">${Number(detailedSettlement.partyAShare).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-end pt-1 border-t">
+                        <span className="text-xs font-bold">Net Payout:</span>
+                        <span className="text-xl font-bold">${Number(detailedSettlement.partyAPayout).toFixed(2)}</span>
+                      </div>
                     </div>
-                    <div className="p-4 border rounded-lg">
+                    <div className="p-4 border rounded-lg space-y-2">
                       <p className="text-sm font-medium">Party B</p>
-                      <p className="text-2xl font-bold">${Number(detailedSettlement.partyBShare).toFixed(2)}</p>
+                      <div className="flex justify-between items-end">
+                        <span className="text-xs text-muted-foreground">Share:</span>
+                        <span className="text-sm">${Number(detailedSettlement.partyBShare).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-end pt-1 border-t">
+                        <span className="text-xs font-bold">Net Payout:</span>
+                        <span className="text-xl font-bold">${Number(detailedSettlement.partyBPayout).toFixed(2)}</span>
+                      </div>
                     </div>
-                    <div className="p-4 border rounded-lg">
+                    <div className="p-4 border rounded-lg space-y-2">
                       <p className="text-sm font-medium">Party C</p>
-                      <p className="text-2xl font-bold">${Number(detailedSettlement.partyCShare).toFixed(2)}</p>
+                      <div className="flex justify-between items-end">
+                        <span className="text-xs text-muted-foreground">Share:</span>
+                        <span className="text-sm">${Number(detailedSettlement.partyCShare).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-end pt-1 border-t">
+                        <span className="text-xs font-bold">Net Payout:</span>
+                        <span className="text-xl font-bold">${Number(detailedSettlement.partyCPayout).toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
+                  <p className="text-[10px] text-muted-foreground mt-2 italic">
+                    * Net Payout = Share - Direct Payments already received by the party.
+                  </p>
                 </div>
+
+                {detailedSettlement.directPayments && detailedSettlement.directPayments.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Direct Player Payments</h3>
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Recipient</TableHead>
+                            <TableHead>Method</TableHead>
+                            <TableHead>Reference</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {detailedSettlement.directPayments.map((dp: any) => (
+                            <TableRow key={dp.id}>
+                              <TableCell className="capitalize">{dp.receivedBy.replace('_', ' ')}</TableCell>
+                              <TableCell className="capitalize">{dp.paymentMethod}</TableCell>
+                              <TableCell className="text-xs font-mono">{dp.reference || "-"}</TableCell>
+                              <TableCell className="text-right font-medium">${Number(dp.amount).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
 
                 {detailedSettlement.expenses && detailedSettlement.expenses.length > 0 && (
                   <div>
