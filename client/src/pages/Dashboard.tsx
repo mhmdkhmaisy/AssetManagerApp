@@ -30,6 +30,7 @@ import { Plus, Download, MoreHorizontal, Trash, FileText, Loader2, AlertCircle, 
 import { format } from "date-fns";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 export default function Dashboard() {
   const { data: settlements, isLoading, isError } = useSettlements();
