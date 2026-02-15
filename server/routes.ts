@@ -53,36 +53,52 @@ export async function registerRoutes(
       // 1. Sum expenses
       const totalExpenses = input.expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
       
-      // 2. Calculate Net Income
-      const grossIncome = parseFloat(input.grossIncome);
+      // 2. Sum direct payments and calculate total gross revenue
+      const directPaymentsTotal = input.directPayments.reduce((sum, dp) => sum + parseFloat(dp.amount), 0);
+      const grossIncome = parseFloat(input.grossIncome) + directPaymentsTotal;
+      
+      // 3. Calculate Net Income
       const feePercentage = parseFloat(input.feePercentage || "0") / 100;
-      const paypalFees = input.feePercentage ? grossIncome * feePercentage : parseFloat(input.paypalFees || "0");
+      const paypalFees = input.feePercentage ? parseFloat(input.grossIncome) * feePercentage : parseFloat(input.paypalFees || "0");
       const netIncome = grossIncome - paypalFees - totalExpenses;
 
-      // 3. Detect Date Rule
+      // 4. Detect Date Rule
       const weekEndDate = new Date(input.weekEndDate);
       const cutoffDate = new Date(splitConfig.cutoffDate);
       const isBeforeCutoff = weekEndDate < cutoffDate;
       const rules = isBeforeCutoff ? splitConfig.before : splitConfig.after;
 
-      // 4. Apply Split
+      // 5. Apply Split
       const partyAShare = netIncome * rules.partyA;
       const partyBShare = netIncome * rules.partyB;
       const partyCShare = netIncome * rules.partyC;
 
-      // 5. Prepare data for storage
+      // 6. Offset direct payments
+      const partyADirect = input.directPayments.filter(dp => dp.receivedBy === 'party_a').reduce((sum, dp) => sum + parseFloat(dp.amount), 0);
+      const partyBDirect = input.directPayments.filter(dp => dp.receivedBy === 'party_b').reduce((sum, dp) => sum + parseFloat(dp.amount), 0);
+      const partyCDirect = input.directPayments.filter(dp => dp.receivedBy === 'party_c').reduce((sum, dp) => sum + parseFloat(dp.amount), 0);
+
+      const partyAPayout = partyAShare - partyADirect;
+      const partyBPayout = partyBShare - partyBDirect;
+      const partyCPayout = partyCShare - partyCDirect;
+
+      // 7. Prepare data for storage
       const settlementData = {
         weekStartDate: input.weekStartDate,
         weekEndDate: input.weekEndDate,
-        grossIncome: input.grossIncome,
+        grossIncome: grossIncome.toFixed(2),
         paypalFees: paypalFees.toFixed(2),
         feePercentage: input.feePercentage || "0",
         notes: input.notes,
         totalExpenses: totalExpenses.toFixed(2),
+        directPaymentsTotal: directPaymentsTotal.toFixed(2),
         netIncome: netIncome.toFixed(2),
         partyAShare: partyAShare.toFixed(2),
         partyBShare: partyBShare.toFixed(2),
         partyCShare: partyCShare.toFixed(2),
+        partyAPayout: partyAPayout.toFixed(2),
+        partyBPayout: partyBPayout.toFixed(2),
+        partyCPayout: partyCPayout.toFixed(2),
       };
 
       const expensesData = input.expenses.map(e => ({
@@ -92,8 +108,17 @@ export async function registerRoutes(
         notes: e.notes,
       }));
 
-      // 6. Save to DB
-      const settlement = await storage.createSettlement(settlementData, expensesData);
+      const directPaymentsData = input.directPayments.map(dp => ({
+        amount: dp.amount,
+        currency: dp.currency || 'USD',
+        paymentMethod: dp.paymentMethod,
+        receivedBy: dp.receivedBy,
+        reference: dp.reference,
+        notes: dp.notes,
+      }));
+
+      // 8. Save to DB
+      const settlement = await storage.createSettlement(settlementData, expensesData, directPaymentsData);
       
       res.status(201).json(settlement);
 
@@ -118,27 +143,45 @@ export async function registerRoutes(
       const input = api.settlements.update.input.parse(req.body);
       
       const totalExpenses = input.expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
-      const grossIncome = parseFloat(input.grossIncome);
+      const directPaymentsTotal = input.directPayments.reduce((sum, dp) => sum + parseFloat(dp.amount), 0);
+      const grossIncome = parseFloat(input.grossIncome) + directPaymentsTotal;
+      
       const feePercentage = parseFloat(input.feePercentage || "0") / 100;
-      const paypalFees = input.feePercentage ? grossIncome * feePercentage : parseFloat(input.paypalFees || "0");
+      const paypalFees = input.feePercentage ? parseFloat(input.grossIncome) * feePercentage : parseFloat(input.paypalFees || "0");
       const netIncome = grossIncome - paypalFees - totalExpenses;
 
       const weekEndDate = new Date(input.weekEndDate);
       const cutoffDate = new Date(splitConfig.cutoffDate);
       const rules = weekEndDate < cutoffDate ? splitConfig.before : splitConfig.after;
 
+      const partyAShare = netIncome * rules.partyA;
+      const partyBShare = netIncome * rules.partyB;
+      const partyCShare = netIncome * rules.partyC;
+
+      const partyADirect = input.directPayments.filter(dp => dp.receivedBy === 'party_a').reduce((sum, dp) => sum + parseFloat(dp.amount), 0);
+      const partyBDirect = input.directPayments.filter(dp => dp.receivedBy === 'party_b').reduce((sum, dp) => sum + parseFloat(dp.amount), 0);
+      const partyCDirect = input.directPayments.filter(dp => dp.receivedBy === 'party_c').reduce((sum, dp) => sum + parseFloat(dp.amount), 0);
+
+      const partyAPayout = partyAShare - partyADirect;
+      const partyBPayout = partyBShare - partyBDirect;
+      const partyCPayout = partyCShare - partyCDirect;
+
       const settlementData = {
         weekStartDate: input.weekStartDate,
         weekEndDate: input.weekEndDate,
-        grossIncome: input.grossIncome,
+        grossIncome: grossIncome.toFixed(2),
         paypalFees: paypalFees.toFixed(2),
         feePercentage: input.feePercentage || "0",
         notes: input.notes,
         totalExpenses: totalExpenses.toFixed(2),
+        directPaymentsTotal: directPaymentsTotal.toFixed(2),
         netIncome: netIncome.toFixed(2),
-        partyAShare: (netIncome * rules.partyA).toFixed(2),
-        partyBShare: (netIncome * rules.partyB).toFixed(2),
-        partyCShare: (netIncome * rules.partyC).toFixed(2),
+        partyAShare: partyAShare.toFixed(2),
+        partyBShare: partyBShare.toFixed(2),
+        partyCShare: partyCShare.toFixed(2),
+        partyAPayout: partyAPayout.toFixed(2),
+        partyBPayout: partyBPayout.toFixed(2),
+        partyCPayout: partyCPayout.toFixed(2),
       };
 
       const expensesData = input.expenses.map(e => ({
@@ -148,7 +191,16 @@ export async function registerRoutes(
         notes: e.notes,
       }));
 
-      const settlement = await storage.updateSettlement(id, settlementData, expensesData);
+      const directPaymentsData = input.directPayments.map(dp => ({
+        amount: dp.amount,
+        currency: dp.currency || 'USD',
+        paymentMethod: dp.paymentMethod,
+        receivedBy: dp.receivedBy,
+        reference: dp.reference,
+        notes: dp.notes,
+      }));
+
+      const settlement = await storage.updateSettlement(id, settlementData, expensesData, directPaymentsData);
       res.json(settlement);
     } catch (err) {
       if (err instanceof z.ZodError) {
