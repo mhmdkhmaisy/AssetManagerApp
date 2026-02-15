@@ -34,7 +34,7 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
   const updateSettlement = useUpdateSettlement();
 
   const { data: fullSettlementData, isLoading: isLoadingFullData } = useSettlement(
-    initialData?.id && !initialData.expenses ? initialData.id : 0
+    initialData?.id ? initialData.id : 0
   );
 
   const form = useForm<FormValues>({
