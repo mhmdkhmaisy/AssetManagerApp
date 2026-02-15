@@ -16,18 +16,15 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async createSettlement(insertSettlement: any, expensesList: InsertExpense[]): Promise<Settlement> {
-    // Transaction to ensure atomicity
-    return await db.transaction(async (tx) => {
-      const [settlement] = await tx.insert(settlements).values(insertSettlement).returning();
-      
-      if (expensesList.length > 0) {
-        await tx.insert(expenses).values(
-          expensesList.map(e => ({ ...e, settlementId: settlement.id }))
-        );
-      }
-      
-      return settlement;
-    });
+    const [settlement] = await db.insert(settlements).values(insertSettlement).returning();
+    
+    if (expensesList.length > 0) {
+      await db.insert(expenses).values(
+        expensesList.map(e => ({ ...e, settlementId: settlement.id }))
+      );
+    }
+    
+    return settlement;
   }
 
   async getSettlements(): Promise<Settlement[]> {
