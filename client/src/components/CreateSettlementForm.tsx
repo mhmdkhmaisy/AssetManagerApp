@@ -4,6 +4,7 @@ import { insertSettlementSchema, insertExpenseSchema, type CreateSettlementReque
 import { useCreateSettlement, useUpdateSettlement, useSettlement } from "@/hooks/use-settlements";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Plus, Trash2, CalendarIcon, Loader2, DollarSign } from "lucide-react";
@@ -251,6 +252,25 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Settlement Notes</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Enter any additional notes for this settlement..." 
+                      className="min-h-[100px] resize-none"
+                      {...field} 
+                      value={field.value || ''} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 
@@ -341,7 +361,12 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
                         <FormItem className="md:col-span-3">
                           <FormLabel className="text-xs">Notes</FormLabel>
                           <FormControl>
-                            <Input placeholder="Additional notes..." {...field} value={field.value || ''} />
+                            <Textarea 
+                              placeholder="Additional notes..." 
+                              className="min-h-[80px] resize-none"
+                              {...field} 
+                              value={field.value || ''} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
