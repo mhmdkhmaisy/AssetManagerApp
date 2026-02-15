@@ -1,4 +1,4 @@
-import { useSettlements, useExportSettlement, useDeleteSettlement } from "@/hooks/use-settlements";
+import { useSettlements, useExportSettlementPdf, useDeleteSettlement } from "@/hooks/use-settlements";
 import { Button } from "@/components/ui/button";
 import { CreateSettlementForm } from "@/components/CreateSettlementForm";
 import { SettlementStats } from "@/components/SettlementStats";
@@ -26,16 +26,17 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { Plus, Download, MoreHorizontal, Trash, FileText, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Download, MoreHorizontal, Trash, FileText, Loader2, AlertCircle, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const { data: settlements, isLoading, isError } = useSettlements();
-  const exportSettlement = useExportSettlement();
+  const exportSettlementPdf = useExportSettlementPdf();
   const deleteSettlement = useDeleteSettlement();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [viewSettlement, setViewSettlement] = useState<any>(null);
 
   if (isLoading) {
     return (
@@ -154,11 +155,17 @@ export default function Dashboard() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem 
-                                onClick={() => exportSettlement.mutate(settlement.id)}
-                                disabled={exportSettlement.isPending}
+                                onClick={() => setViewSettlement(settlement)}
+                            >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => exportSettlementPdf.mutate(settlement.id)}
+                                disabled={exportSettlementPdf.isPending}
                             >
                                 <Download className="mr-2 h-4 w-4" />
-                                {exportSettlement.isPending ? "Exporting..." : "Export CSV"}
+                                {exportSettlementPdf.isPending ? "Exporting..." : "Export PDF"}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
@@ -182,6 +189,65 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        <Dialog open={!!viewSettlement} onOpenChange={() => setViewSettlement(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Settlement Details</DialogTitle>
+              <DialogDescription>
+                Financial breakdown for the week ending {viewSettlement && format(new Date(viewSettlement.weekEndDate), "MMM d, yyyy")}.
+              </DialogDescription>
+            </DialogHeader>
+            {viewSettlement && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground">Gross Income</p>
+                    <p className="text-lg font-bold">${Number(viewSettlement.grossIncome).toFixed(2)}</p>
+                  </div>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground">PayPal Fees</p>
+                    <p className="text-lg font-bold">${Number(viewSettlement.paypalFees).toFixed(2)}</p>
+                  </div>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground">Total Expenses</p>
+                    <p className="text-lg font-bold">${Number(viewSettlement.totalExpenses).toFixed(2)}</p>
+                  </div>
+                  <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <p className="text-xs text-green-700 dark:text-green-300">Net Income</p>
+                    <p className="text-lg font-bold text-green-700 dark:text-green-300">${Number(viewSettlement.netIncome).toFixed(2)}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Profit Distribution</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <p className="text-sm font-medium">Party A</p>
+                      <p className="text-2xl font-bold">${Number(viewSettlement.partyAShare).toFixed(2)}</p>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <p className="text-sm font-medium">Party B</p>
+                      <p className="text-2xl font-bold">${Number(viewSettlement.partyBShare).toFixed(2)}</p>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <p className="text-sm font-medium">Party C</p>
+                      <p className="text-2xl font-bold">${Number(viewSettlement.partyCShare).toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {viewSettlement.notes && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-1">Notes</h3>
+                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">{viewSettlement.notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

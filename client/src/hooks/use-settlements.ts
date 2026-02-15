@@ -100,31 +100,27 @@ export function useDeleteSettlement() {
   });
 }
 
-export function useExportSettlement() {
+export function useExportSettlementPdf() {
     const { toast } = useToast();
 
     return useMutation({
         mutationFn: async (id: number) => {
-             const url = buildUrl(api.settlements.export.path, { id });
-             // For file downloads, we typically navigate or use window.open, but for Auth checking
-             // we might fetch a blob. Simplest for this context is window.open if it's a GET.
-             // However, to handle errors gracefully, let's try fetch first then blob.
-             
+             const url = buildUrl(api.settlements.exportPdf.path, { id });
              const res = await fetch(url, { credentials: "include" });
-             if (!res.ok) throw new Error("Failed to export");
+             if (!res.ok) throw new Error("Failed to export PDF");
              
              const blob = await res.blob();
              const downloadUrl = window.URL.createObjectURL(blob);
              const a = document.createElement('a');
              a.href = downloadUrl;
-             a.download = `settlement-${id}.csv`; // Assuming CSV, adjust based on backend
+             a.download = `settlement-${id}.pdf`;
              document.body.appendChild(a);
              a.click();
              a.remove();
         },
         onError: (error) => {
             toast({
-                title: "Export Failed",
+                title: "PDF Export Failed",
                 description: error.message,
                 variant: "destructive"
             });

@@ -171,10 +171,27 @@ export function CreateSettlementForm({ onSuccess }: CreateSettlementFormProps) {
 
             <FormField
               control={form.control}
+              name="feePercentage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>PayPal Fee Percentage (%)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input placeholder="0.00" className="pr-9" {...field} value={field.value || ''} />
+                      <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="paypalFees"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>PayPal Fees</FormLabel>
+                  <FormLabel>Manual PayPal Fees (Override)</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -199,7 +216,7 @@ export function CreateSettlementForm({ onSuccess }: CreateSettlementFormProps) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append({ description: "", amount: "", payeeEmail: "" })}
+              onClick={() => append({ description: "", amount: "", payeeEmail: "", notes: "" })}
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Expense
@@ -262,6 +279,20 @@ export function CreateSettlementForm({ onSuccess }: CreateSettlementFormProps) {
                           <FormLabel className="text-xs">Payee Email (Optional)</FormLabel>
                           <FormControl>
                             <Input placeholder="payee@example.com" {...field} value={field.value || ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`expenses.${index}.notes`}
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-3">
+                          <FormLabel className="text-xs">Notes</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Additional notes..." {...field} value={field.value || ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

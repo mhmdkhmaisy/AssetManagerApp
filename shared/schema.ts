@@ -1,34 +1,34 @@
-import { pgTable, text, serial, integer, boolean, timestamp, date, numeric } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { sqliteTable, text, integer, numeric } from "drizzle-orm/sqlite-core";
+import { relations, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // === TABLE DEFINITIONS ===
 
-export const settlements = pgTable("settlements", {
-  id: serial("id").primaryKey(),
-  weekStartDate: date("week_start_date").notNull(),
-  weekEndDate: date("week_end_date").notNull(),
-  grossIncome: numeric("gross_income", { precision: 10, scale: 2 }).notNull(),
-  paypalFees: numeric("paypal_fees", { precision: 10, scale: 2 }).default('0').notNull(),
-  feePercentage: numeric("fee_percentage", { precision: 5, scale: 2 }).default('0'), // Persist this
-  totalExpenses: numeric("total_expenses", { precision: 10, scale: 2 }).default('0').notNull(),
-  netIncome: numeric("net_income", { precision: 10, scale: 2 }).notNull(),
-  partyAShare: numeric("party_a_share", { precision: 10, scale: 2 }).notNull(),
-  partyBShare: numeric("party_b_share", { precision: 10, scale: 2 }).notNull(),
-  partyCShare: numeric("party_c_share", { precision: 10, scale: 2 }).notNull(),
-  notes: text("notes"), // added for settlement notes
-  createdAt: timestamp("created_at").defaultNow(),
+export const settlements = sqliteTable("settlements", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  weekStartDate: text("week_start_date").notNull(),
+  weekEndDate: text("week_end_date").notNull(),
+  grossIncome: text("gross_income").notNull(),
+  paypalFees: text("paypal_fees").default('0').notNull(),
+  feePercentage: text("fee_percentage").default('0'),
+  totalExpenses: text("total_expenses").default('0').notNull(),
+  netIncome: text("net_income").notNull(),
+  partyAShare: text("party_a_share").notNull(),
+  partyBShare: text("party_b_share").notNull(),
+  partyCShare: text("party_c_share").notNull(),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 });
 
-export const expenses = pgTable("expenses", {
-  id: serial("id").primaryKey(),
+export const expenses = sqliteTable("expenses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   settlementId: integer("settlement_id").notNull().references(() => settlements.id, { onDelete: 'cascade' }),
   description: text("description").notNull(),
-  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  amount: text("amount").notNull(),
   payeeEmail: text("payee_email"),
-  notes: text("notes"), 
-  createdAt: timestamp("created_at").defaultNow(),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 });
 
 // === RELATIONS ===

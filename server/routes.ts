@@ -55,7 +55,8 @@ export async function registerRoutes(
       
       // 2. Calculate Net Income
       const grossIncome = parseFloat(input.grossIncome);
-      const paypalFees = parseFloat(input.paypalFees);
+      const feePercentage = parseFloat(input.feePercentage || "0") / 100;
+      const paypalFees = input.feePercentage ? grossIncome * feePercentage : parseFloat(input.paypalFees || "0");
       const netIncome = grossIncome - paypalFees - totalExpenses;
 
       // 3. Detect Date Rule
@@ -74,7 +75,7 @@ export async function registerRoutes(
         weekStartDate: input.weekStartDate,
         weekEndDate: input.weekEndDate,
         grossIncome: input.grossIncome,
-        paypalFees: input.paypalFees,
+        paypalFees: paypalFees.toFixed(2),
         feePercentage: input.feePercentage || "0",
         notes: input.notes,
         totalExpenses: totalExpenses.toFixed(2),
