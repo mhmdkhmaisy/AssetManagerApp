@@ -16,7 +16,7 @@ export function useSettlements() {
 
 export function useSettlement(id: number) {
   return useQuery({
-    queryKey: [api.settlements.get.path, id],
+    queryKey: ["/api/settlements", id],
     queryFn: async () => {
       const url = buildUrl(api.settlements.get.path, { id });
       const res = await fetch(url, { credentials: "include" });
