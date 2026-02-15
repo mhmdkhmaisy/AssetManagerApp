@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl, type CreateSettlementInput, type SettlementResponse } from "@shared/routes";
-import { Settlement } from "@shared/schema";
+import { type Settlement, type SettlementWithDetails } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 export function useSettlements() {
@@ -15,14 +15,14 @@ export function useSettlements() {
 }
 
 export function useSettlement(id: number) {
-  return useQuery({
+  return useQuery<SettlementWithDetails | null>({
     queryKey: ["/api/settlements", id],
     queryFn: async () => {
       const url = buildUrl(api.settlements.get.path, { id });
       const res = await fetch(url, { credentials: "include" });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch settlement");
-      return api.settlements.get.responses[200].parse(await res.json());
+      return res.json() as Promise<SettlementWithDetails>;
     },
     enabled: !!id,
   });

@@ -79,6 +79,7 @@ export function CreateSettlementForm({ onSuccess, initialData }: CreateSettlemen
         })) || [],
         directPayments: fullSettlementData.directPayments?.map(dp => ({
           ...dp,
+          amount: String(dp.amount),
           notes: dp.notes || undefined,
           reference: dp.reference || undefined,
         })) || [],
