@@ -8,14 +8,14 @@ import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Settlements
-  createSettlement(settlement: InsertSettlement, expensesList: InsertExpense[]): Promise<Settlement>;
+  createSettlement(settlement: any, expensesList: InsertExpense[]): Promise<Settlement>;
   getSettlements(): Promise<Settlement[]>;
   getSettlement(id: number): Promise<(Settlement & { expenses: Expense[] }) | undefined>;
   deleteSettlement(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async createSettlement(insertSettlement: InsertSettlement, expensesList: InsertExpense[]): Promise<Settlement> {
+  async createSettlement(insertSettlement: any, expensesList: InsertExpense[]): Promise<Settlement> {
     // Transaction to ensure atomicity
     return await db.transaction(async (tx) => {
       const [settlement] = await tx.insert(settlements).values(insertSettlement).returning();
