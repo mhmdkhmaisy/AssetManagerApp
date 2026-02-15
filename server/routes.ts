@@ -109,6 +109,56 @@ export async function registerRoutes(
     }
   });
 
+  // Update Settlement
+  app.put(api.settlements.update.path, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+
+      const input = api.settlements.update.input.parse(req.body);
+      
+      const totalExpenses = input.expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+      const grossIncome = parseFloat(input.grossIncome);
+      const feePercentage = parseFloat(input.feePercentage || "0") / 100;
+      const paypalFees = input.feePercentage ? grossIncome * feePercentage : parseFloat(input.paypalFees || "0");
+      const netIncome = grossIncome - paypalFees - totalExpenses;
+
+      const weekEndDate = new Date(input.weekEndDate);
+      const cutoffDate = new Date(splitConfig.cutoffDate);
+      const rules = weekEndDate < cutoffDate ? splitConfig.before : splitConfig.after;
+
+      const settlementData = {
+        weekStartDate: input.weekStartDate,
+        weekEndDate: input.weekEndDate,
+        grossIncome: input.grossIncome,
+        paypalFees: paypalFees.toFixed(2),
+        feePercentage: input.feePercentage || "0",
+        notes: input.notes,
+        totalExpenses: totalExpenses.toFixed(2),
+        netIncome: netIncome.toFixed(2),
+        partyAShare: (netIncome * rules.partyA).toFixed(2),
+        partyBShare: (netIncome * rules.partyB).toFixed(2),
+        partyCShare: (netIncome * rules.partyC).toFixed(2),
+      };
+
+      const expensesData = input.expenses.map(e => ({
+        description: e.description,
+        amount: e.amount,
+        payeeEmail: e.payeeEmail,
+        notes: e.notes,
+      }));
+
+      const settlement = await storage.updateSettlement(id, settlementData, expensesData);
+      res.json(settlement);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation Error", details: err.errors });
+      }
+      console.error(err);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
   // Delete Settlement
   app.delete(api.settlements.delete.path, async (req, res) => {
     const id = parseInt(req.params.id);

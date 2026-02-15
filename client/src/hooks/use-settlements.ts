@@ -68,6 +68,34 @@ export function useCreateSettlement() {
   });
 }
 
+export function useUpdateSettlement() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: CreateSettlementInput }) => {
+      const url = buildUrl(api.settlements.update.path, { id });
+      const res = await fetch(url, {
+        method: api.settlements.update.method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      
+      if (!res.ok) throw new Error("Failed to update settlement");
+      return api.settlements.update.responses[200].parse(await res.json());
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [api.settlements.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.settlements.get.path, variables.id] });
+      toast({ title: "Success", description: "Settlement updated successfully" });
+    },
+    onError: (error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+}
+
 export function useDeleteSettlement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

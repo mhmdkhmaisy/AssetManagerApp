@@ -11,6 +11,7 @@ export interface IStorage {
   createSettlement(settlement: any, expensesList: InsertExpense[]): Promise<Settlement>;
   getSettlements(): Promise<Settlement[]>;
   getSettlement(id: number): Promise<(Settlement & { expenses: Expense[] }) | undefined>;
+  updateSettlement(id: number, settlement: any, expensesList: InsertExpense[]): Promise<Settlement>;
   deleteSettlement(id: number): Promise<void>;
 }
 
@@ -39,6 +40,25 @@ export class DatabaseStorage implements IStorage {
     const expensesList = await db.select().from(expenses).where(eq(expenses.settlementId, id));
     
     return { ...settlement, expenses: expensesList };
+  }
+
+  async updateSettlement(id: number, insertSettlement: any, expensesList: InsertExpense[]): Promise<Settlement> {
+    const [settlement] = await db.update(settlements)
+      .set(insertSettlement)
+      .where(eq(settlements.id, id))
+      .returning();
+    
+    if (!settlement) throw new Error("Settlement not found");
+
+    // Replace expenses
+    await db.delete(expenses).where(eq(expenses.settlementId, id));
+    if (expensesList.length > 0) {
+      await db.insert(expenses).values(
+        expensesList.map(e => ({ ...e, settlementId: id }))
+      );
+    }
+    
+    return settlement;
   }
 
   async deleteSettlement(id: number): Promise<void> {

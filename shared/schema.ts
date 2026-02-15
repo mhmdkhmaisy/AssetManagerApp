@@ -82,7 +82,7 @@ export type CreateSettlementRequest = InsertSettlement & {
   expenses: InsertExpense[];
 };
 
-export type UpdateSettlementRequest = Partial<CreateSettlementRequest>;
+export type UpdateSettlementRequest = CreateSettlementRequest;
 
 // Response types
 export type SettlementWithExpenses = Settlement & {

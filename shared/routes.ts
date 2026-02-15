@@ -48,6 +48,18 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/settlements/:id' as const,
+      input: insertSettlementSchema.extend({
+        expenses: z.array(insertExpenseSchema),
+      }),
+      responses: {
+        200: z.custom<typeof settlements.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
     delete: {
       method: 'DELETE' as const,
       path: '/api/settlements/:id' as const,
