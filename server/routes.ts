@@ -5,6 +5,7 @@ import { insertSettlementSchema, insertExpenseSchema } from "@shared/schema";
 import { z } from "zod";
 import { api } from "@shared/routes";
 import { ExcelService } from "./excel-service";
+import { PdfService } from "./pdf-service";
 
 const splitConfig = {
   cutoffDate: '2026-02-08',
@@ -64,11 +65,6 @@ export async function registerRoutes(
       const rules = isBeforeCutoff ? splitConfig.before : splitConfig.after;
 
       // 4. Apply Split
-      // Note: Brief says "Party C Share = Net Revenue * 0.05"
-      // And then "Party A = Net * 0.30" etc.
-      // The percentages sum to 1.00 (30+65+5 = 100, 33+62+5 = 100).
-      // So we apply percentages to the Net Income directly.
-      
       const partyAShare = netIncome * rules.partyA;
       const partyBShare = netIncome * rules.partyB;
       const partyCShare = netIncome * rules.partyC;
@@ -79,6 +75,8 @@ export async function registerRoutes(
         weekEndDate: input.weekEndDate,
         grossIncome: input.grossIncome,
         paypalFees: input.paypalFees,
+        feePercentage: input.feePercentage || "0",
+        notes: input.notes,
         totalExpenses: totalExpenses.toFixed(2),
         netIncome: netIncome.toFixed(2),
         partyAShare: partyAShare.toFixed(2),
@@ -137,6 +135,27 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Export failed:", error);
       res.status(500).json({ message: "Export failed" });
+    }
+  });
+
+  // Export Settlement PDF
+  app.get(api.settlements.exportPdf.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+
+    const settlement = await storage.getSettlement(id);
+    if (!settlement) return res.status(404).json({ message: "Settlement not found" });
+
+    try {
+      const buffer = await PdfService.generateSettlementPdf(settlement);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=settlement_${settlement.weekEndDate}.pdf`);
+      
+      res.send(buffer);
+    } catch (error) {
+      console.error("PDF Export failed:", error);
+      res.status(500).json({ message: "PDF Export failed" });
     }
   });
 

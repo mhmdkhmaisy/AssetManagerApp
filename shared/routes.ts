@@ -60,7 +60,15 @@ export const api = {
       method: 'GET' as const,
       path: '/api/settlements/:id/export' as const,
       responses: {
-        200: z.any(), // File download
+        200: z.any(), // File download (Excel)
+        404: errorSchemas.notFound,
+      },
+    },
+    exportPdf: {
+      method: 'GET' as const,
+      path: '/api/settlements/:id/export-pdf' as const,
+      responses: {
+        200: z.any(), // File download (PDF)
         404: errorSchemas.notFound,
       },
     }

@@ -9,13 +9,15 @@ export const settlements = pgTable("settlements", {
   id: serial("id").primaryKey(),
   weekStartDate: date("week_start_date").notNull(),
   weekEndDate: date("week_end_date").notNull(),
-  grossIncome: numeric("gross_income", { precision: 10, scale: 2 }).notNull(), // using numeric for currency
+  grossIncome: numeric("gross_income", { precision: 10, scale: 2 }).notNull(),
   paypalFees: numeric("paypal_fees", { precision: 10, scale: 2 }).default('0').notNull(),
+  feePercentage: numeric("fee_percentage", { precision: 5, scale: 2 }).default('0'), // Persist this
   totalExpenses: numeric("total_expenses", { precision: 10, scale: 2 }).default('0').notNull(),
   netIncome: numeric("net_income", { precision: 10, scale: 2 }).notNull(),
   partyAShare: numeric("party_a_share", { precision: 10, scale: 2 }).notNull(),
   partyBShare: numeric("party_b_share", { precision: 10, scale: 2 }).notNull(),
   partyCShare: numeric("party_c_share", { precision: 10, scale: 2 }).notNull(),
+  notes: text("notes"), // added for settlement notes
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -25,7 +27,7 @@ export const expenses = pgTable("expenses", {
   description: text("description").notNull(),
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
   payeeEmail: text("payee_email"),
-  notes: text("notes"), // added for transactionID or other info
+  notes: text("notes"), 
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -56,7 +58,8 @@ export const insertSettlementSchema = createInsertSchema(settlements)
   .extend({
     grossIncome: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid amount"),
     paypalFees: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid amount").default("0"),
-    feePercentage: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid percentage").optional(), // Added for frontend auto-calc
+    feePercentage: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid percentage").optional(),
+    notes: z.string().optional(),
   });
 
 export const insertExpenseSchema = createInsertSchema(expenses)
@@ -87,18 +90,3 @@ export type SettlementWithExpenses = Settlement & {
 };
 
 export type SettlementListResponse = Settlement[];
-
-// Config Type for Split Rules
-export interface SplitConfig {
-  cutoffDate: string;
-  before: {
-    partyA: number;
-    partyB: number;
-    partyC: number;
-  };
-  after: {
-    partyA: number;
-    partyB: number;
-    partyC: number;
-  };
-}
