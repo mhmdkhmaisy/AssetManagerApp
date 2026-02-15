@@ -1,10 +1,10 @@
 import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import { type Settlement, type Expense } from "@shared/schema";
 
 export class PdfService {
   static async generateSettlementPdf(settlement: Settlement & { expenses: Expense[] }): Promise<Buffer> {
-    const doc = new jsPDF() as any;
+    const doc = new jsPDF();
 
     // Header
     doc.setFontSize(20);
@@ -25,7 +25,7 @@ export class PdfService {
       ["Net Income", `$${settlement.netIncome}`],
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 50,
       head: [["Field", "Value"]],
       body: summaryData,
@@ -44,7 +44,7 @@ export class PdfService {
       ["Party C Share", `$${settlement.partyCShare}`],
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: splitStartY + 5,
       head: [["Party", "Share Amount"]],
       body: splitData,
@@ -65,7 +65,7 @@ export class PdfService {
         e.notes || "-"
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: expenseStartY + 5,
         head: [["Description", "Payee", "Amount", "Notes"]],
         body: expenseData,
