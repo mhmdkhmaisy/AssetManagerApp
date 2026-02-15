@@ -1,0 +1,289 @@
+Got you — I’ll write this like a **proper developer brief** you can hand straight to a Laravel dev.
+Goal: small local app, easy UI, auto-calculations, export to Excel/Sheets.
+
+---
+
+# 📘 Project: Settlement & Revenue Split Tracker
+
+**Tech stack:**
+
+* Backend: Laravel (PHP)
+* Database: SQLite (local storage)
+* Frontend: Blade + basic JS (or Livewire)
+* Export: Excel (CSV/XLSX)
+* Runs locally via `php artisan serve`
+
+---
+
+## 🎯 Purpose
+
+A local desktop-style web app to:
+
+* Record weekly income
+* Record expenses
+* Automatically calculate party revenue splits based on contract rules
+* Export settlements to Excel
+* Keep tax-safe accounting records separate from PayPal history
+
+---
+
+## 🧩 Core Business Logic (VERY IMPORTANT)
+
+### Parties:
+
+* Party A
+* Party B
+* Party C (Community Manager – always 5%)
+
+### Split Rules:
+
+Based on **week ending date**:
+
+#### BEFORE 8 Feb:
+
+* Party A = 30%
+* Party C = 5%
+* Party B = 65%
+
+#### AFTER 8 Feb:
+
+* Party A = 33%
+* Party C = 5%
+* Party B = 62%
+
+### Calculations:
+
+```
+Net Revenue = Gross Income - Total Expenses
+
+Party C Share = Net Revenue * 0.05
+
+If date < 2026-02-08:
+    Party A = Net * 0.30
+    Party B = Net * 0.65
+Else:
+    Party A = Net * 0.33
+    Party B = Net * 0.62
+```
+
+Percentages must be **configurable constants**, not hardcoded.
+
+---
+
+## 🗄️ Database Schema
+
+### 1️⃣ settlements table
+
+| field          | type          |
+| -------------- | ------------- |
+| id             | bigint        |
+| week_start     | date          |
+| week_end       | date          |
+| gross_income   | decimal(10,2) |
+| paypal_fees    | decimal(10,2) |
+| total_expenses | decimal(10,2) |
+| net_income     | decimal(10,2) |
+| party_a_share  | decimal(10,2) |
+| party_b_share  | decimal(10,2) |
+| party_c_share  | decimal(10,2) |
+| created_at     | timestamp     |
+
+---
+
+### 2️⃣ expenses table
+
+| field         | type              |
+| ------------- | ----------------- |
+| id            | bigint            |
+| settlement_id | foreign key       |
+| description   | string            |
+| amount        | decimal(10,2)     |
+| payee_email   | string (nullable) |
+| created_at    | timestamp         |
+
+---
+
+## 🖥️ UI Pages
+
+### 1️⃣ Dashboard
+
+* Button: ➕ New Settlement
+* Table: list of settlements
+
+  * week ending
+  * net income
+  * Party A/B/C shares
+  * Export button
+
+---
+
+### 2️⃣ Create Settlement Page
+
+**Fields:**
+
+* Week start date
+* Week end date
+* Gross income
+* PayPal fees
+
+**Expense section (repeatable):**
+
+* Description
+* Amount
+* Payee email
+
+**Buttons:**
+
+* ➕ Add expense
+* 💾 Save & Calculate
+
+---
+
+## ⚙️ Backend Logic Flow
+
+### When user saves settlement:
+
+1. Sum expenses
+2. Calculate:
+
+   ```
+   net_income = gross - fees - expenses
+   ```
+3. Detect date rule
+4. Apply split
+5. Save settlement + expenses
+6. Return to summary view
+
+---
+
+## 📤 Export Feature
+
+### Excel export should include:
+
+Sheet: `Settlement`
+
+| Field          | Value |
+| -------------- | ----- |
+| Week Start     |       |
+| Week End       |       |
+| Gross Income   |       |
+| Total Expenses |       |
+| Net Income     |       |
+| Party A        |       |
+| Party B        |       |
+| Party C        |       |
+
+Sheet: `Expenses`
+
+| Description | Amount | Payee |
+
+Export formats:
+
+* XLSX
+* CSV
+
+Laravel package recommended:
+
+```
+maatwebsite/excel
+```
+
+---
+
+## 📁 File Storage
+
+Use Laravel local storage:
+
+```
+storage/app/exports/
+```
+
+Each export named:
+
+```
+settlement_YYYY_MM_DD.xlsx
+```
+
+---
+
+## 🧠 Configuration File
+
+Create:
+
+```
+config/splits.php
+```
+
+```php
+return [
+    'cutoff_date' => '2026-02-08',
+
+    'before' => [
+        'party_a' => 0.30,
+        'party_b' => 0.65,
+        'party_c' => 0.05,
+    ],
+
+    'after' => [
+        'party_a' => 0.33,
+        'party_b' => 0.62,
+        'party_c' => 0.05,
+    ],
+];
+```
+
+---
+
+## 🧪 Validation Rules
+
+* Dates required
+* Gross income ≥ 0
+* Expenses ≥ 0
+* Net income cannot be negative
+* Percentages must sum to 1.00
+
+---
+
+## 🏃 How to Run Locally (Artisan)
+
+### Requirements:
+
+* PHP 8+
+* Composer
+* Laravel installed
+
+### Setup:
+
+```
+composer create-project laravel/laravel settlements
+cd settlements
+php artisan migrate
+php artisan serve
+```
+
+Then open:
+
+```
+http://127.0.0.1:8000
+```
+
+---
+
+## 🛡️ Tax-Safe Design Notes
+
+* App stores:
+
+  * income
+  * expenses
+  * distributions
+* Does NOT rely on PayPal history
+* Supports audit trail
+* Exportable per week
+* Separation between business & personal funds
+
+---
+
+## 📜 Dev Request Summary (copy-paste to dev)
+
+> Build a Laravel app that lets me enter weekly income and expenses, automatically calculates revenue splits between three parties based on date rules, stores locally in SQLite, and exports settlements to Excel. Must run locally using artisan serve. Include configuration-based split logic and export function.
+
