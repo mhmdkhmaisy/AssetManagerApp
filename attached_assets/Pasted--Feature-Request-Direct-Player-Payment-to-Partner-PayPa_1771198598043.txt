@@ -1,0 +1,187 @@
+---
+
+# 📌 Feature Request: Direct Player Payment to Partner (PayPal / Crypto)
+
+## 🎯 Goal
+
+Add support for **player payments received directly by a partner (Party A / B / or C)** via **PayPal or Crypto**, so that:
+
+✅ The payment is counted as **revenue**
+❌ It is **NOT treated as an expense**
+✅ It is automatically **offset against that party’s revenue share**
+✅ Other parties’ shares are **not reduced incorrectly**
+
+This is needed when a player pays a partner directly instead of paying Party A.
+
+---
+
+## 🧩 Business Logic
+
+### New Concept: `direct_player_payment`
+
+A direct player payment has:
+
+* amount
+* currency (USD base)
+* payment method (PayPal / Crypto)
+* received_by (Party A / B / or C)
+* proof (tx hash or PayPal ID)
+* settlement_id
+
+It behaves like:
+
+> “Already received revenue by X, to be deducted from X’s payout”
+
+---
+
+## 🧠 Calculation Rules
+
+### Step 1: Revenue
+
+```
+total_gross_revenue =
+    paypal_revenue +
+    direct_player_payments_sum
+```
+
+### Step 2: Expenses
+
+```
+net_revenue = total_gross_revenue - expenses
+```
+
+### Step 3: Split normally by contract %
+
+```
+party_a_share = net_revenue * percent_a
+party_b_share = net_revenue * percent_b
+party_c_share = net_revenue * percent_c
+```
+
+### Step 4: Offset direct payments
+
+If Party B received $200 directly:
+
+```
+party_b_payout = party_b_share - 200
+party_a_payout = party_a_share
+party_c_payout = party_c_share
+```
+
+So:
+✔ Party B already has part of his share
+✔ System reduces what must be transferred to him
+✔ Others are unchanged
+
+---
+
+## 🗄️ Database (new table)
+
+### direct_player_payments
+
+| field          | type                            |
+| -------------- | ------------------------------- |
+| id             | bigint                          |
+| settlement_id  | FK                              |
+| amount         | decimal(10,2)                   |
+| currency       | string                          |
+| payment_method | enum(paypal, crypto)            |
+| received_by    | enum(party_a, party_b, party_c) |
+| reference      | string (tx hash / PayPal ID)    |
+| notes          | text                            |
+| created_at     | timestamp                       |
+
+---
+
+## 🖥️ UI Requirements
+
+### On “Create Settlement” screen:
+
+Add section:
+
+### ➕ Direct Player Payments
+
+Each row:
+
+* Amount
+* Payment Method (dropdown: PayPal / Crypto)
+* Received By (dropdown: Party A / Party B / Party C)
+* Reference (tx hash or PayPal transaction ID)
+* Notes (optional)
+
+Button:
+➕ Add Direct Player Payment
+
+---
+
+## 📊 Settlement Summary Display
+
+Example:
+
+**Revenue**
+
+* PayPal collected by Party A: $1,800
+* Crypto payment received by Party B: $200
+* **Total Gross Revenue: $2,000**
+
+**Distribution**
+
+* Party B share (62%): $1,240
+* Less: already received via crypto: $200
+* **Net payable to Party B: $1,040**
+
+---
+
+## 📤 Export Requirements (Excel / CSV)
+
+Include in export:
+
+### Sheet: Settlement
+
+Add:
+
+* Direct Player Payments Total
+
+### Sheet: DirectPayments
+
+| Amount | Method | Received By | Reference |
+
+And in notes:
+
+> “Includes player payment(s) received directly by Party X and offset against their revenue share.”
+
+---
+
+## 🧪 Validation Rules
+
+* Amount > 0
+* received_by required
+* method required
+* Cannot exceed that party’s share (warn if it does)
+* Must still be counted as revenue
+
+---
+
+## 🛡️ Accounting Rule (important)
+
+**Direct player payments must NEVER:**
+❌ be treated as expenses
+❌ reduce total revenue
+❌ change percentage split
+❌ be ignored
+
+They only:
+➡ reduce what must be transferred to the receiving party
+
+---
+
+## 📝 Contract Compatibility Text (logic matches):
+
+> “Player payments received directly by a Party shall be included in gross revenue and offset against that Party’s revenue share.”
+
+---
+
+## 🔧 Dev Summary (short)
+
+> Add support for direct player payments (PayPal/Crypto) received by Party A/B/C, count them as revenue, and automatically offset them from that party’s payout when calculating settlement splits. Include UI input, DB table, calculation logic, and Excel export.
+
