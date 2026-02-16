@@ -165,7 +165,10 @@ export default function Dashboard() {
                                 View Details
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                                onClick={() => setEditingSettlement(settlement)}
+                                onClick={() => {
+                                  setEditingSettlement(null); // Clear first to ensure reset
+                                  setTimeout(() => setEditingSettlement(settlement), 0);
+                                }}
                             >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit

@@ -15,6 +15,7 @@ export function useSettlements() {
 }
 
 export function useSettlement(id: number) {
+  const queryClient = useQueryClient();
   return useQuery<SettlementWithDetails | null>({
     queryKey: ["/api/settlements", id],
     queryFn: async () => {
@@ -25,6 +26,7 @@ export function useSettlement(id: number) {
       return res.json() as Promise<SettlementWithDetails>;
     },
     enabled: !!id,
+    staleTime: 0, // Ensure we always get fresh data when opening edit/view
   });
 }
 
@@ -87,7 +89,7 @@ export function useUpdateSettlement() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [api.settlements.list.path] });
-      queryClient.invalidateQueries({ queryKey: [api.settlements.get.path, variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/settlements", variables.id] });
       toast({ title: "Success", description: "Settlement updated successfully" });
     },
     onError: (error) => {
